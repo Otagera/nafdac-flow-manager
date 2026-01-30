@@ -1,0 +1,7 @@
+node_modules
+.vinxi
+dist
+.db
+.sqlite
+nafdac.db
+drizzle
