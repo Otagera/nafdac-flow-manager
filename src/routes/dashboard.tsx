@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { ApplicationList } from '@/components/ApplicationList';
 import { useToast } from '@/hooks/use-toast';
-import { BarChart3, Settings, LayoutDashboard } from 'lucide-react';
+import { BarChart3, Settings, LayoutDashboard, Menu } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -39,68 +40,92 @@ function Dashboard() {
   if (!role) return null; // Prevent flash of content
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-800">NAFDAC Manager</h1>
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex items-center gap-2">
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="md:hidden">
+                        <Menu className="h-5 w-5" />
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] sm:w-[350px]">
+                    <div className="py-4">
+                        <h2 className="text-lg font-bold mb-4">Menu</h2>
+                        <SidebarContent role={role} handlePlaceholder={handlePlaceholder} />
+                    </div>
+                </SheetContent>
+            </Sheet>
+            <h1 className="text-2xl font-bold text-slate-800">NAFDAC Manager</h1>
+        </div>
+        
         <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                Active Session: <span className="font-semibold text-slate-900">{role}</span>
+            <div className="hidden sm:block text-sm text-muted-foreground bg-slate-100 px-3 py-1 rounded-full border border-slate-200 whitespace-nowrap">
+                <span className="hidden lg:inline">Active Session: </span><span className="font-semibold text-slate-900">{role}</span>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <Card className="col-span-1 h-fit border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="hidden md:block md:col-span-1 h-fit border-slate-200 shadow-sm">
             <CardHeader className="pb-3 border-b border-slate-100 mb-2">
                 <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Workspace</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col space-y-1 p-2">
-                <Link 
-                    to="/dashboard" 
-                    className={`p-2 rounded-md text-sm font-medium transition-all flex items-center gap-3 ${
-                        role === 'FINANCE' ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-100' :
-                        role === 'VETTING' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100' :
-                        role === 'DIRECTOR' ? 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100' :
-                        'bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-200'
-                    }`}
-                >
-                    <LayoutDashboard size={16} />
-                    {role === 'FINANCE' ? 'Pending Payments' :
-                     role === 'VETTING' ? 'Compliance Review' :
-                     role === 'DIRECTOR' ? 'All Operations' :
-                     'Overview'}
-                </Link>
-                
-                <div className="pt-6 pb-2 px-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
-                </div>
-                
-                <button 
-                    onClick={() => handlePlaceholder('Analytics')}
-                    className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group"
-                >
-                    <BarChart3 size={16} className="text-slate-400 group-hover:text-slate-600" />
-                    Reports
-                </button>
-                
-                <button 
-                    onClick={() => handlePlaceholder('Settings')}
-                    className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group"
-                >
-                    <Settings size={16} className="text-slate-400 group-hover:text-slate-600" />
-                    Settings
-                </button>
+            <CardContent className="p-2">
+                <SidebarContent role={role} handlePlaceholder={handlePlaceholder} />
             </CardContent>
         </Card>
 
-        <div className="col-span-3">
+        <div className="md:col-span-3">
             <Outlet /> 
             <DashboardContent role={role} />
         </div>
       </div>
     </div>
   );
+}
+
+function SidebarContent({ role, handlePlaceholder }: { role: string, handlePlaceholder: (f: string) => void }) {
+    return (
+        <div className="flex flex-col space-y-1">
+            <Link 
+                to="/dashboard" 
+                className={`p-2 rounded-md text-sm font-medium transition-all flex items-center gap-3 ${
+                    role === 'FINANCE' ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-100' :
+                    role === 'VETTING' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100' :
+                    role === 'DIRECTOR' ? 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100' :
+                    'bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-200'
+                }`}
+            >
+                <LayoutDashboard size={16} />
+                {role === 'FINANCE' ? 'Pending Payments' :
+                    role === 'VETTING' ? 'Compliance Review' :
+                    role === 'DIRECTOR' ? 'All Operations' :
+                    'Overview'}
+            </Link>
+            
+            <div className="pt-6 pb-2 px-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
+            </div>
+            
+            <button 
+                onClick={() => handlePlaceholder('Analytics')}
+                className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group"
+            >
+                <BarChart3 size={16} className="text-slate-400 group-hover:text-slate-600" />
+                Reports
+            </button>
+            
+            <button 
+                onClick={() => handlePlaceholder('Settings')}
+                className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group"
+            >
+                <Settings size={16} className="text-slate-400 group-hover:text-slate-600" />
+                Settings
+            </button>
+        </div>
+    );
 }
 
 function DashboardContent({ role }: { role: string }) {

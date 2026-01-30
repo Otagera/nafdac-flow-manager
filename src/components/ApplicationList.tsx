@@ -68,15 +68,15 @@ export function ApplicationList({ role }: { role: string }) {
                 )}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
                 <Input 
                     placeholder="Search products or clients..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-sm"
+                    className="w-full md:max-w-sm"
                 />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Filter by Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -90,65 +90,67 @@ export function ApplicationList({ role }: { role: string }) {
                 </Select>
             </div>
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredApplications.length === 0 ? (
+            <div className="rounded-md border overflow-x-auto">
+                <Table>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                                No applications found matching your filters.
-                            </TableCell>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
                         </TableRow>
-                    ) : (
-                        filteredApplications.map((app) => (
-                        <TableRow key={app.id} className={statusColors[app.status] || ''}>
-                            <TableCell className="font-medium">{app.product_name}</TableCell>
-                            <TableCell>{app.client?.company_name}</TableCell>
-                            <TableCell>
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-white shadow-sm">
-                                    {app.status}
-                                </span>
-                            </TableCell>
-                            <TableCell>
-                                {role === 'FINANCE' && app.status === 'FINANCE_PENDING' && (
-                                    <Button size="sm" onClick={() => updateStatus(app.id, 'VETTING_PROGRESS')}>
-                                        Approve Payment
-                                    </Button>
-                                )}
-                                {role === 'VETTING' && app.status === 'VETTING_PROGRESS' && (
-                                    <div className="flex space-x-2">
-                                        <Button size="sm" variant="outline" onClick={() => {
-                                            if (app.documents && app.documents.length > 0) {
-                                                window.open(`/api/uploads/${app.documents[0].file_path.split('/').pop()}`, '_blank');
-                                            } else {
-                                                toast({ variant: "destructive", title: "No Documents", description: "This application has no uploaded documents." });
-                                            }
-                                        }}>View Docs</Button>
-                                        <Button size="sm" onClick={() => updateStatus(app.id, 'NAFDAC_SUBMITTED')}>
-                                            Submit
+                    </TableHeader>
+                    <TableBody>
+                        {filteredApplications.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                                    No applications found matching your filters.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredApplications.map((app) => (
+                            <TableRow key={app.id} className={statusColors[app.status] || ''}>
+                                <TableCell className="font-medium">{app.product_name}</TableCell>
+                                <TableCell>{app.client?.company_name}</TableCell>
+                                <TableCell>
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-white shadow-sm whitespace-nowrap">
+                                        {app.status}
+                                    </span>
+                                </TableCell>
+                                <TableCell>
+                                    {role === 'FINANCE' && app.status === 'FINANCE_PENDING' && (
+                                        <Button size="sm" onClick={() => updateStatus(app.id, 'VETTING_PROGRESS')}>
+                                            Approve Payment
                                         </Button>
-                                    </div>
-                                )}
-                                {role === 'DOCUMENTATION' && (
-                                    <UploadDocumentDialog applicationId={app.id} role={role} onSuccess={fetchApps} />
-                                )}
-                                {role === 'DIRECTOR' && app.status === 'NAFDAC_SUBMITTED' && (
-                                    <Button size="sm" onClick={() => updateStatus(app.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white">
-                                        Final Approval
-                                    </Button>
-                                )}
-                            </TableCell>
-                        </TableRow>
-                    )))}
-                </TableBody>
-            </Table>
+                                    )}
+                                    {role === 'VETTING' && app.status === 'VETTING_PROGRESS' && (
+                                        <div className="flex space-x-2">
+                                            <Button size="sm" variant="outline" onClick={() => {
+                                                if (app.documents && app.documents.length > 0) {
+                                                    window.open(`/api/uploads/${app.documents[0].file_path.split('/').pop()}`, '_blank');
+                                                } else {
+                                                    toast({ variant: "destructive", title: "No Documents", description: "This application has no uploaded documents." });
+                                                }
+                                            }}>View Docs</Button>
+                                            <Button size="sm" onClick={() => updateStatus(app.id, 'NAFDAC_SUBMITTED')}>
+                                                Submit
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {role === 'DOCUMENTATION' && (
+                                        <UploadDocumentDialog applicationId={app.id} role={role} onSuccess={fetchApps} />
+                                    )}
+                                    {role === 'DIRECTOR' && app.status === 'NAFDAC_SUBMITTED' && (
+                                        <Button size="sm" onClick={() => updateStatus(app.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white">
+                                            Final Approval
+                                        </Button>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        )))}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }
