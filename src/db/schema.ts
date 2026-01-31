@@ -4,8 +4,10 @@ import { relations } from 'drizzle-orm';
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   username: text('username').notNull().unique(),
-  password_hash: text('password_hash').notNull(),
+  password_hash: text('password_hash'),
   role: text('role', { enum: ['DIRECTOR', 'FINANCE', 'VETTING', 'DOCUMENTATION'] }).notNull(),
+  invite_code: text('invite_code').unique(),
+  created_at: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
 export const clients = sqliteTable('clients', {

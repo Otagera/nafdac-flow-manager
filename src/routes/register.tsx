@@ -8,11 +8,12 @@ import { api } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff } from 'lucide-react'
 
-export const Route = createFileRoute('/login')({
-  component: LoginPage,
+export const Route = createFileRoute('/register')({
+  component: RegisterPage,
 })
 
-function LoginPage() {
+function RegisterPage() {
+  const [inviteCode, setInviteCode] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -20,22 +21,25 @@ function LoginPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
     setLoading(true)
     try {
-        const { data, error } = await api.auth.login.post({ username, password })
+        const { data, error } = await api.auth.register.post({ 
+            invite_code: inviteCode,
+            username,
+            password 
+        })
         
         if (error) {
             toast({
-                title: "Login Failed",
-                description: "Invalid credentials",
+                title: "Registration Failed",
+                description: error.value ? (error.value as any).message : "Invalid invite code or username taken",
                 variant: "destructive"
             })
             return
         }
 
         if (data.success) {
-            // Force a reload or navigate to trigger the root loader to re-check auth
             window.location.href = '/dashboard'
         }
     } catch (e) {
@@ -53,13 +57,17 @@ function LoginPage() {
     <div className="flex items-center justify-center min-h-[80vh] bg-gray-50/50">
       <Card className="w-[350px] shadow-lg">
         <CardHeader>
-          <CardTitle>NAFDAC Flow Manager</CardTitle>
-          <CardDescription>Enter your credentials to continue</CardDescription>
+          <CardTitle>Join NAFDAC Flow</CardTitle>
+          <CardDescription>Enter your invite code to get started</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label>Invite Code</Label>
+            <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="FIN-X8Y2" />
+          </div>
+          <div className="space-y-2">
             <Label>Username</Label>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" />
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="jdoe" />
           </div>
           <div className="space-y-2">
             <Label>Password</Label>
@@ -80,13 +88,13 @@ function LoginPage() {
                 </button>
             </div>
           </div>
-          <Button className="w-full" onClick={handleLogin} disabled={loading}>
-            {loading ? 'Logging in...' : 'Log In'}
+          <Button className="w-full" onClick={handleRegister} disabled={loading}>
+            {loading ? 'Registering...' : 'Register Account'}
           </Button>
         </CardContent>
         <CardFooter className="flex justify-center text-sm">
-            <Link to="/register" className="text-blue-600 hover:underline">
-                Have an invite code? Register
+            <Link to="/login" className="text-blue-600 hover:underline">
+                Back to Login
             </Link>
         </CardFooter>
       </Card>
