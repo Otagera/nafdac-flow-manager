@@ -1,11 +1,13 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   username: text('username').notNull().unique(),
   password_hash: text('password_hash'),
-  role: text('role', { enum: ['DIRECTOR', 'FINANCE', 'VETTING', 'DOCUMENTATION'] }).notNull(),
+  role: text('role', {
+    enum: ['DIRECTOR', 'FINANCE', 'VETTING', 'DOCUMENTATION'],
+  }).notNull(),
   invite_code: text('invite_code').unique(),
   created_at: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
@@ -23,10 +25,14 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 export const applications = sqliteTable('applications', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   product_name: text('product_name').notNull(),
-  client_id: integer('client_id').references(() => clients.id).notNull(),
-  status: text('status', { 
-    enum: ['PENDING_DOCS', 'FINANCE_PENDING', 'VETTING_PROGRESS', 'NAFDAC_SUBMITTED', 'APPROVED'] 
-  }).notNull().default('PENDING_DOCS'),
+  client_id: integer('client_id')
+    .references(() => clients.id)
+    .notNull(),
+  status: text('status', {
+    enum: ['PENDING_DOCS', 'FINANCE_PENDING', 'VETTING_PROGRESS', 'NAFDAC_SUBMITTED', 'APPROVED'],
+  })
+    .notNull()
+    .default('PENDING_DOCS'),
 });
 
 export const applicationsRelations = relations(applications, ({ one, many }) => ({
@@ -39,7 +45,9 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
 
 export const documents = sqliteTable('documents', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  application_id: integer('application_id').references(() => applications.id).notNull(),
+  application_id: integer('application_id')
+    .references(() => applications.id)
+    .notNull(),
   file_type: text('file_type').notNull(), // e.g., 'CAC', 'LABEL', 'SOP'
   file_path: text('file_path').notNull(),
 });

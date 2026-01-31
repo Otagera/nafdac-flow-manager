@@ -9,7 +9,7 @@
 
 .api-page .content {
   width: 100%;
-  max-width: 2xl;
+  max-width: 42rem;
   padding: 8rem;
   border-radius: 1rem;
   backdrop-filter: blur(1rem);

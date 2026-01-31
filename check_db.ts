@@ -6,8 +6,8 @@ const sqlite = new Database('nafdac.db');
 const db = drizzle(sqlite);
 
 async function check() {
-    const allClients = await db.select().from(clients);
-    console.log(allClients);
+  const allClients = await db.select().from(clients);
+  console.log(allClients);
 }
 
 check();
