@@ -1,19 +1,19 @@
 import { relations } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { pgTable, serial, text, timestamp, integer } from 'drizzle-orm/pg-core';
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   password_hash: text('password_hash'),
   role: text('role', {
     enum: ['DIRECTOR', 'FINANCE', 'VETTING', 'DOCUMENTATION'],
   }).notNull(),
   invite_code: text('invite_code').unique(),
-  created_at: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  created_at: timestamp('created_at').defaultNow(),
 });
 
-export const clients = sqliteTable('clients', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const clients = pgTable('clients', {
+  id: serial('id').primaryKey(),
   company_name: text('company_name').notNull(),
   cac_number: text('cac_number').notNull(),
 });
@@ -22,8 +22,8 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   applications: many(applications),
 }));
 
-export const applications = sqliteTable('applications', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const applications = pgTable('applications', {
+  id: serial('id').primaryKey(),
   product_name: text('product_name').notNull(),
   client_id: integer('client_id')
     .references(() => clients.id)
@@ -43,8 +43,8 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   documents: many(documents),
 }));
 
-export const documents = sqliteTable('documents', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const documents = pgTable('documents', {
+  id: serial('id').primaryKey(),
   application_id: integer('application_id')
     .references(() => applications.id)
     .notNull(),

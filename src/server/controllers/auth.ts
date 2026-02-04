@@ -13,7 +13,7 @@ export const authController = new Elysia({ prefix: '/auth' })
     '/login',
     async ({ body, set, cookie: { auth_token } }) => {
       const { username, password } = body;
-      const user = await db.select().from(users).where(eq(users.username, username)).get();
+      const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
 
       if (!user || !user.password_hash) {
         set.status = 401;
@@ -61,7 +61,7 @@ export const authController = new Elysia({ prefix: '/auth' })
       const { invite_code, username, password } = body;
 
       // Find user by invite code
-      const user = await db.select().from(users).where(eq(users.invite_code, invite_code)).get();
+      const [user] = await db.select().from(users).where(eq(users.invite_code, invite_code)).limit(1);
 
       if (!user) {
         set.status = 400;
@@ -91,8 +91,7 @@ export const authController = new Elysia({ prefix: '/auth' })
           invite_code: null, // Clear invite code
           username: username, // Allow updating username
         })
-        .where(eq(users.id, user.id))
-        .run();
+        .where(eq(users.id, user.id));
 
       // Auto login
       const token = await new SignJWT({

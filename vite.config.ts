@@ -16,9 +16,6 @@ const config = defineConfig({
     devtools(),
     nitro({
       preset: 'bun',
-      externals: {
-        external: ['bun:sqlite'],
-      },
     }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
@@ -28,12 +25,6 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
-  optimizeDeps: {
-    exclude: ['bun:sqlite'],
-  },
-  ssr: {
-    external: ['bun:sqlite'],
-  },
 });
 
 export default config;
