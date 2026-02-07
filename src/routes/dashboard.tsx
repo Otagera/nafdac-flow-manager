@@ -1,11 +1,11 @@
-import { createFileRoute, Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { BarChart3, Building2, LayoutDashboard, Menu, Settings, Users } from 'lucide-react';
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { BarChart3, Settings, LayoutDashboard, Menu, Users, Building2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useEffect } from 'react';
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardLayout,
@@ -22,13 +22,6 @@ function DashboardLayout() {
     }
   }, [user, loading, navigate]);
 
-  const handlePlaceholder = (feature: string) => {
-    toast({
-      title: 'Coming Soon',
-      description: `The ${feature} module is currently under development.`,
-    });
-  };
-
   if (loading || !user) return <div className="p-8 text-center">Loading session...</div>;
 
   return (
@@ -44,7 +37,7 @@ function DashboardLayout() {
             <SheetContent side="left" className="w-[280px] sm:w-[350px]">
               <div className="py-4">
                 <h2 className="text-lg font-bold mb-4">Menu</h2>
-                <SidebarContent role={user.role} handlePlaceholder={handlePlaceholder} />
+                <SidebarContent role={user.role} />
               </div>
             </SheetContent>
           </Sheet>
@@ -58,8 +51,6 @@ function DashboardLayout() {
               {user.username} ({user.role})
             </span>
           </div>
-          {/* Logout handled in Header or useAuth context, but we can keep a button here if needed. 
-                Actually the previous design had it here. Let's keep it. */}
           <LogoutButton />
         </div>
       </div>
@@ -72,7 +63,7 @@ function DashboardLayout() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2">
-            <SidebarContent role={user.role} handlePlaceholder={handlePlaceholder} />
+            <SidebarContent role={user.role} />
           </CardContent>
         </Card>
 
@@ -93,13 +84,7 @@ function LogoutButton() {
   );
 }
 
-function SidebarContent({
-  role,
-  handlePlaceholder,
-}: {
-  role: string;
-  handlePlaceholder: (f: string) => void;
-}) {
+function SidebarContent({ role }: { role: string }) {
   const activeStyle = 'bg-slate-200 text-slate-900 font-semibold border-slate-300';
 
   return (
@@ -153,23 +138,23 @@ function SidebarContent({
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
       </div>
 
-      <button
-        type="button"
-        onClick={() => handlePlaceholder('Analytics')}
+      <Link
+        to="/dashboard/reports"
+        activeProps={{ className: activeStyle }}
         className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group border border-transparent"
       >
         <BarChart3 size={16} className="text-slate-400 group-hover:text-slate-600" />
         Reports
-      </button>
+      </Link>
 
-      <button
-        type="button"
-        onClick={() => handlePlaceholder('Settings')}
+      <Link
+        to="/dashboard/settings"
+        activeProps={{ className: activeStyle }}
         className="p-2 hover:bg-slate-50 rounded-md text-sm font-medium text-left text-slate-600 transition-colors flex items-center gap-3 group border border-transparent"
       >
         <Settings size={16} className="text-slate-400 group-hover:text-slate-600" />
         Settings
-      </button>
+      </Link>
     </div>
   );
 }

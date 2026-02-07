@@ -59,33 +59,6 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
         ensureRole: ['DIRECTOR']
     }
   )
-  .delete(
-    '/:id',
-    async ({ params: { id } }) => {
-        const appId = parseInt(id, 10);
-        
-        // 1. Find associated documents to delete files
-        const docs = await db.select().from(documents).where(eq(documents.application_id, appId));
-        
-        // 2. Delete files from disk
-        for (const doc of docs) {
-            try {
-                await unlink(doc.file_path);
-            } catch (e) {
-                console.error(`Failed to delete file: ${doc.file_path}`, e);
-            }
-        }
-
-        // 3. Delete application (DB cascade handles invoices/documents rows)
-        await db.delete(applications).where(eq(applications.id, appId));
-        
-        return { success: true };
-    },
-    {
-        params: t.Object({ id: t.String() }),
-        ensureRole: ['DIRECTOR']
-    }
-  )
   .patch(
     '/:id/status',
     async ({ params: { id }, body, role, error }) => {
@@ -108,6 +81,13 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
         .update(applications)
         .set({ status: status as any })
         .where(eq(applications.id, appId));
+
+      // Auto-mark invoice as PAID if moved to VETTING_PROGRESS
+      if (status === 'VETTING_PROGRESS') {
+          await db.update(invoices)
+            .set({ status: 'PAID' })
+            .where(eq(invoices.application_id, appId));
+      }
 
       return { success: true, id: appId, status };
     },

@@ -145,4 +145,38 @@ export const authController = new Elysia({ prefix: '/auth' })
       set.status = 401;
       return { authenticated: false };
     }
+  })
+  
+  .patch('/password', async ({ body, set, cookie: { auth_token } }) => {
+      if (!auth_token.value) { set.status = 401; return { success: false }; }
+      
+      const { jwtVerify } = await import('jose');
+      const { payload } = await jwtVerify(auth_token.value, JWT_SECRET);
+      const userId = (payload as any).id;
+
+      const { currentPassword, newPassword } = body;
+      
+      // 1. Verify current password
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user || !user.password_hash) {
+          set.status = 400;
+          return { success: false, message: 'User not found' };
+      }
+
+      const isMatch = await Bun.password.verify(currentPassword, user.password_hash);
+      if (!isMatch) {
+          set.status = 400;
+          return { success: false, message: 'Incorrect current password' };
+      }
+
+      // 2. Update password
+      const hashedNew = await Bun.password.hash(newPassword);
+      await db.update(users).set({ password_hash: hashedNew }).where(eq(users.id, userId));
+
+      return { success: true };
+  }, {
+      body: t.Object({
+          currentPassword: t.String(),
+          newPassword: t.String()
+      })
   });

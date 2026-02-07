@@ -15,6 +15,8 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardTeamRouteImport } from './routes/dashboard/team'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
+import { Route as DashboardReportsRouteImport } from './routes/dashboard/reports'
 import { Route as DashboardClientsRouteImport } from './routes/dashboard/clients'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
@@ -53,6 +55,16 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
 const DashboardTeamRoute = DashboardTeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardReportsRoute = DashboardReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardClientsRoute = DashboardClientsRouteImport.update({
@@ -108,6 +120,8 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/api/$': typeof ApiSplatRoute
   '/dashboard/clients': typeof DashboardClientsRoute
+  '/dashboard/reports': typeof DashboardReportsRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -124,6 +138,8 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/api/$': typeof ApiSplatRoute
   '/dashboard/clients': typeof DashboardClientsRoute
+  '/dashboard/reports': typeof DashboardReportsRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -142,6 +158,8 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/api/$': typeof ApiSplatRoute
   '/dashboard/clients': typeof DashboardClientsRoute
+  '/dashboard/reports': typeof DashboardReportsRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/team': typeof DashboardTeamRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -161,6 +179,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/api/$'
     | '/dashboard/clients'
+    | '/dashboard/reports'
+    | '/dashboard/settings'
     | '/dashboard/team'
     | '/dashboard/'
     | '/demo/api/names'
@@ -177,6 +197,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/api/$'
     | '/dashboard/clients'
+    | '/dashboard/reports'
+    | '/dashboard/settings'
     | '/dashboard/team'
     | '/dashboard'
     | '/demo/api/names'
@@ -194,6 +216,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/api/$'
     | '/dashboard/clients'
+    | '/dashboard/reports'
+    | '/dashboard/settings'
     | '/dashboard/team'
     | '/dashboard/'
     | '/demo/api/names'
@@ -264,6 +288,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardTeamRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reports': {
+      id: '/dashboard/reports'
+      path: '/reports'
+      fullPath: '/dashboard/reports'
+      preLoaderRoute: typeof DashboardReportsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/clients': {
       id: '/dashboard/clients'
       path: '/clients'
@@ -332,12 +370,16 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardClientsRoute: typeof DashboardClientsRoute
+  DashboardReportsRoute: typeof DashboardReportsRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardTeamRoute: typeof DashboardTeamRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardClientsRoute: DashboardClientsRoute,
+  DashboardReportsRoute: DashboardReportsRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardTeamRoute: DashboardTeamRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
