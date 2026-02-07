@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { db } from '../../db';
-import { applications } from '../../db/schema';
+import { applications, invoices, invoice_items } from '../../db/schema';
 import { auth } from '../middleware/auth';
 
 export const applicationsController = new Elysia({ prefix: '/applications' })
@@ -12,7 +12,7 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
       if (role === 'FINANCE') {
         return db.query.applications.findMany({
           where: eq(applications.status, 'FINANCE_PENDING'),
-          with: { client: true },
+          with: { client: true, invoices: { with: { items: true } } },
         });
       }
 
@@ -24,7 +24,7 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
       }
 
       return db.query.applications.findMany({
-        with: { client: true },
+        with: { client: true, invoices: { with: { items: true } } },
       });
     },
     {
@@ -65,7 +65,8 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
   .post(
     '/',
     async ({ body }) => {
-      const result = await db
+      // 1. Create Application
+      const [application] = await db
         .insert(applications)
         .values({
           product_name: body.product_name,
@@ -73,13 +74,43 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
           status: (body.status as any) || 'PENDING_DOCS',
         })
         .returning();
-      return { success: true, application: result[0] };
+
+      // 2. Create Invoice if items provided
+      if (body.items && body.items.length > 0) {
+        const total = body.items.reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
+        const invoiceNumber = `INV-${Date.now()}`;
+
+        const [invoice] = await db.insert(invoices).values({
+            invoice_number: invoiceNumber,
+            client_id: body.client_id,
+            application_id: application.id,
+            total_amount: total,
+            status: 'PENDING'
+        }).returning();
+
+        await db.insert(invoice_items).values(
+            body.items.map(item => ({
+                invoice_id: invoice.id,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                amount: item.unit_price * item.quantity
+            }))
+        );
+      }
+
+      return { success: true, application };
     },
     {
       body: t.Object({
         product_name: t.String(),
         client_id: t.Number(),
         status: t.Optional(t.String()),
+        items: t.Optional(t.Array(t.Object({
+            description: t.String(),
+            quantity: t.Number(),
+            unit_price: t.Number()
+        })))
       }),
       ensureRole: ['DIRECTOR', 'DOCUMENTATION'],
     },
