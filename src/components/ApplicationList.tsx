@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -35,6 +37,7 @@ interface Client {
 }
 
 interface InvoiceItem {
+  id?: string;
   description: string;
   quantity: number;
   unit_price: number;
@@ -176,13 +179,13 @@ export function ApplicationList({ role }: { role: string }) {
                   <TableCell>
                     <div className="flex space-x-2">
                       {app.invoices && app.invoices.length > 0 && (
-                        <InvoiceViewDialog 
-                            invoice={app.invoices[0]} 
-                            client={app.client} 
-                            product={app.product_name} 
+                        <InvoiceViewDialog
+                          invoice={app.invoices[0]}
+                          client={app.client}
+                          product={app.product_name}
                         />
                       )}
-                      
+
                       {role === 'FINANCE' && app.status === 'FINANCE_PENDING' && (
                         <Button size="sm" onClick={() => updateStatus(app.id, 'VETTING_PROGRESS')}>
                           Approve Payment
@@ -210,7 +213,10 @@ export function ApplicationList({ role }: { role: string }) {
                           >
                             View Docs
                           </Button>
-                          <Button size="sm" onClick={() => updateStatus(app.id, 'NAFDAC_SUBMITTED')}>
+                          <Button
+                            size="sm"
+                            onClick={() => updateStatus(app.id, 'NAFDAC_SUBMITTED')}
+                          >
                             Submit
                           </Button>
                         </>
@@ -222,14 +228,19 @@ export function ApplicationList({ role }: { role: string }) {
                           onSuccess={fetchApps}
                         />
                       )}
-                      {role === 'DIRECTOR' && app.status === 'NAFDAC_SUBMITTED' && (
-                        <Button
-                          size="sm"
-                          onClick={() => updateStatus(app.id, 'APPROVED')}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          Final Approval
-                        </Button>
+                      {role === 'DIRECTOR' && (
+                        <div className="flex gap-2">
+                          {app.status === 'NAFDAC_SUBMITTED' && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateStatus(app.id, 'APPROVED')}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Final Approval
+                            </Button>
+                          )}
+                          <ApplicationDeleteDialog application={app} onSuccess={fetchApps} />
+                        </div>
                       )}
                     </div>
                   </TableCell>
@@ -269,16 +280,21 @@ function CreateApplicationDialog({ role, onSuccess }: { role: string; onSuccess:
   }, [open, role]);
 
   const addItem = (description = '', price = 0) => {
-    setItems([...items, { description, quantity: 1, unit_price: price }]);
+    setItems([
+      ...items,
+      { id: crypto.randomUUID(), description, quantity: 1, unit_price: price },
+    ]);
   };
 
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+  const removeItem = (id?: string) => {
+    setItems(items.filter((item) => item.id !== id));
   };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newItems = [...items];
-    (newItems[index] as any)[field] = value;
+    const item = { ...newItems[index] };
+    (item as any)[field] = value;
+    newItems[index] = item;
     setItems(newItems);
   };
 
@@ -298,7 +314,14 @@ function CreateApplicationDialog({ role, onSuccess }: { role: string; onSuccess:
           product_name: name,
           client_id: parseInt(clientId, 10),
           status: 'PENDING_DOCS',
-          items: items.length > 0 ? items : undefined
+          items:
+            items.length > 0
+              ? items.map(({ description, quantity, unit_price }) => ({
+                  description,
+                  quantity,
+                  unit_price,
+                }))
+              : undefined,
         },
         {
           headers: { 'x-user-role': role },
@@ -337,7 +360,9 @@ function CreateApplicationDialog({ role, onSuccess }: { role: string; onSuccess:
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button><Plus className="mr-2 h-4 w-4" /> New Application</Button>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" /> New Application
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -346,197 +371,229 @@ function CreateApplicationDialog({ role, onSuccess }: { role: string; onSuccess:
         <div className="space-y-6 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                <Label>Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+              <Label>Client</Label>
+              <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
+                  <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent>
-                    {clients.map((client) => (
+                  {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id.toString()}>
-                        {client.company_name}
+                      {client.company_name}
                     </SelectItem>
-                    ))}
+                  ))}
                 </SelectContent>
-                </Select>
+              </Select>
             </div>
             <div className="space-y-2">
-                <Label>Product Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Panadol Extra" />
+              <Label>Product Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Panadol Extra"
+              />
             </div>
           </div>
 
           <div className="space-y-4 border-t pt-4">
             <div className="flex justify-between items-center">
-                <Label className="text-base font-bold">Billing Items (Optional)</Label>
-                <div className="flex gap-2">
-                    <Select onValueChange={(val) => {
-                        const fee = standardFees.find(f => f.label === val);
-                        if (fee) addItem(fee.label, fee.price);
-                    }}>
-                        <SelectTrigger className="w-[200px] h-8 text-xs">
-                            <SelectValue placeholder="Add Standard Fee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {standardFees.map(fee => (
-                                <SelectItem key={fee.label} value={fee.label}>{fee.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button type="button" variant="outline" size="sm" onClick={() => addItem()}>
-                        <Plus className="h-3 w-3 mr-1" /> Custom
-                    </Button>
-                </div>
+              <Label className="text-base font-bold">Billing Items (Optional)</Label>
+              <div className="flex gap-2">
+                <Select
+                  onValueChange={(val) => {
+                    const fee = standardFees.find((f) => f.label === val);
+                    if (fee) addItem(fee.label, fee.price);
+                  }}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-xs">
+                    <SelectValue placeholder="Add Standard Fee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {standardFees.map((fee) => (
+                      <SelectItem key={fee.label} value={fee.label}>
+                        {fee.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="sm" onClick={() => addItem()}>
+                  <Plus className="h-3 w-3 mr-1" /> Custom
+                </Button>
+              </div>
             </div>
 
             {items.map((item, index) => (
-                <div key={index} className="flex gap-2 items-end bg-slate-50 p-2 rounded-md border">
-                    <div className="flex-1 space-y-1">
-                        <Label className="text-[10px] uppercase">Description</Label>
-                        <Input 
-                            value={item.description} 
-                            onChange={(e) => updateItem(index, 'description', e.target.value)} 
-                            className="h-8 text-sm"
-                        />
-                    </div>
-                    <div className="w-20 space-y-1">
-                        <Label className="text-[10px] uppercase">Qty</Label>
-                        <Input 
-                            type="number" 
-                            value={item.quantity} 
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))} 
-                            className="h-8 text-sm"
-                        />
-                    </div>
-                    <div className="w-32 space-y-1">
-                        <Label className="text-[10px] uppercase">Unit Price (₦)</Label>
-                        <Input 
-                            type="number" 
-                            value={item.unit_price} 
-                            onChange={(e) => updateItem(index, 'unit_price', parseInt(e.target.value))} 
-                            className="h-8 text-sm"
-                        />
-                    </div>
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-red-500" 
-                        onClick={() => removeItem(index)}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+              <div key={item.id} className="flex gap-2 items-end bg-slate-50 p-2 rounded-md border">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-[10px] uppercase">Description</Label>
+                  <Input
+                    value={item.description}
+                    onChange={(e) => updateItem(index, 'description', e.target.value)}
+                    className="h-8 text-sm"
+                  />
                 </div>
+                <div className="w-20 space-y-1">
+                  <Label className="text-[10px] uppercase">Qty</Label>
+                  <Input
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value, 10))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="w-32 space-y-1">
+                  <Label className="text-[10px] uppercase">Unit Price (₦)</Label>
+                  <Input
+                    type="number"
+                    value={item.unit_price}
+                    onChange={(e) => updateItem(index, 'unit_price', parseInt(e.target.value, 10))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-500"
+                  onClick={() => removeItem(item.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
 
             {items.length > 0 && (
-                <div className="text-right font-bold text-lg pr-10">
-                    Total: ₦{items.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0).toLocaleString()}
-                </div>
+              <div className="text-right font-bold text-lg pr-10">
+                Total: ₦{items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0).toLocaleString()}
+              </div>
             )}
           </div>
 
-          <Button className="w-full" onClick={handleSubmit}>Create Application & Invoice</Button>
+          <Button className="w-full" onClick={handleSubmit}>
+            Create Application & Invoice
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function InvoiceViewDialog({ invoice, client, product }: { invoice: Invoice, client?: Client, product: string }) {
-    const handlePrint = () => {
-        window.print();
-    };
+function InvoiceViewDialog({
+  invoice,
+  client,
+  product,
+}: { invoice: Invoice; client?: Client; product: string }) {
+  const handlePrint = () => {
+    window.print();
+  };
 
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
-                    <ReceiptText className="h-4 w-4 mr-1" /> Invoice
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
-                    <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
-                    <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" /> Print</Button>
-                </DialogHeader>
-                
-                {/* The Invoice Document */}
-                <div id="invoice-content" className="p-8 bg-white text-slate-900 space-y-8 min-h-[600px]">
-                    <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-blue-900 tracking-tight">KITE SCIENTIFIC SERVICES</h2>
-                            <p className="text-sm font-medium">Professional Regulatory Consultants</p>
-                            <div className="text-xs text-slate-500 pt-2">
-                                <p>Phone: 08033314809</p>
-                                <p>Email: kitescientificservices@gmail.com</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="inline-block bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded mb-2 uppercase tracking-widest">Invoice</div>
-                            <p className="text-sm font-mono">{invoice.invoice_number}</p>
-                            <p className="text-xs text-slate-500">{new Date().toLocaleDateString()}</p>
-                        </div>
-                    </div>
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100"
+        >
+          <ReceiptText className="h-4 w-4 mr-1" /> Invoice
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" /> Print
+          </Button>
+        </DialogHeader>
 
-                    <div className="grid grid-cols-2 gap-8 border-y py-6 border-slate-100">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Bill To</p>
-                            <p className="font-bold text-lg">{client?.company_name || 'Valued Customer'}</p>
-                            <p className="text-sm text-slate-600">CAC: {client?.cac_number || 'N/A'}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Subject</p>
-                            <p className="font-semibold">{product}</p>
-                            <p className="text-sm text-slate-600 italic">Registration Services</p>
-                        </div>
-                    </div>
+        {/* The Invoice Document */}
+        <div id="invoice-content" className="p-8 bg-white text-slate-900 space-y-8 min-h-[600px]">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-black text-blue-900 tracking-tight">
+                KITE SCIENTIFIC SERVICES
+              </h2>
+              <p className="text-sm font-medium">Professional Regulatory Consultants</p>
+              <div className="text-xs text-slate-500 pt-2">
+                <p>Phone: 08033314809</p>
+                <p>Email: kitescientificservices@gmail.com</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="inline-block bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded mb-2 uppercase tracking-widest">
+                Invoice
+              </div>
+              <p className="text-sm font-mono">{invoice.invoice_number}</p>
+              <p className="text-xs text-slate-500">{new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
 
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="border-slate-200">
-                                <TableHead className="text-slate-900">Description</TableHead>
-                                <TableHead className="text-right text-slate-900">Qty</TableHead>
-                                <TableHead className="text-right text-slate-900">Unit Price</TableHead>
-                                <TableHead className="text-right text-slate-900">Amount</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {invoice.items?.map((item, index) => (
-                                <TableRow key={index} className="border-slate-100">
-                                    <TableCell className="font-medium">{item.description}</TableCell>
-                                    <TableCell className="text-right">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">₦{item.unit_price.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right font-bold">₦{(item.unit_price * item.quantity).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+          <div className="grid grid-cols-2 gap-8 border-y py-6 border-slate-100">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                Bill To
+              </p>
+              <p className="font-bold text-lg">{client?.company_name || 'Valued Customer'}</p>
+              <p className="text-sm text-slate-600">CAC: {client?.cac_number || 'N/A'}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                Subject
+              </p>
+              <p className="font-semibold">{product}</p>
+              <p className="text-sm text-slate-600 italic">Registration Services</p>
+            </div>
+          </div>
 
-                    <div className="flex justify-end pt-4">
-                        <div className="w-64 space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Subtotal</span>
-                                <span>₦{invoice.total_amount.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-lg font-black border-t pt-2 border-slate-200 text-blue-900">
-                                <span>Total Due</span>
-                                <span>₦{invoice.total_amount.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-200">
+                <TableHead className="text-slate-900">Description</TableHead>
+                <TableHead className="text-right text-slate-900">Qty</TableHead>
+                <TableHead className="text-right text-slate-900">Unit Price</TableHead>
+                <TableHead className="text-right text-slate-900">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoice.items?.map((item, index) => (
+                <TableRow key={index} className="border-slate-100">
+                  <TableCell className="font-medium">{item.description}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">₦{item.unit_price.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-bold">
+                    ₦{(item.unit_price * item.quantity).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-                    <div className="pt-12 border-t border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Info</p>
-                        <p className="text-xs text-slate-600 leading-relaxed italic">
-                            Please ensure all bank transfers are made to the designated company account. 
-                            Quote the invoice number <strong>{invoice.invoice_number}</strong> as reference.
-                        </p>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
+          <div className="flex justify-end pt-4">
+            <div className="w-64 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Subtotal</span>
+                <span>₦{invoice.total_amount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-lg font-black border-t pt-2 border-slate-200 text-blue-900">
+                <span>Total Due</span>
+                <span>₦{invoice.total_amount.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-12 border-t border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Payment Info
+            </p>
+            <p className="text-xs text-slate-600 leading-relaxed italic">
+              Please ensure all bank transfers are made to the designated company account. Quote the
+              invoice number <strong>{invoice.invoice_number}</strong> as reference.
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function UploadDocumentDialog({
@@ -601,6 +658,63 @@ function UploadDocumentDialog({
           </div>
           <Button onClick={handleUpload}>Upload</Button>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ApplicationDeleteDialog({
+  application,
+  onSuccess,
+}: {
+  application: Application;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      await api.applications({ id: application.id.toString() }).delete();
+      toast({ title: 'Success', description: 'Application deleted' });
+      setOpen(false);
+      onSuccess();
+    } catch (e) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete application',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Application</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete <strong>{application.product_name}</strong>? This will
+            permanently remove the application, all uploaded documents, and invoices.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+            {loading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

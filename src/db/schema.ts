@@ -47,7 +47,7 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
 export const documents = pgTable('documents', {
   id: serial('id').primaryKey(),
   application_id: integer('application_id')
-    .references(() => applications.id)
+    .references(() => applications.id, { onDelete: 'cascade' })
     .notNull(),
   file_type: text('file_type').notNull(), // e.g., 'CAC', 'LABEL', 'SOP'
   file_path: text('file_path').notNull(),
@@ -66,7 +66,7 @@ export const invoices = pgTable('invoices', {
   client_id: integer('client_id')
     .references(() => clients.id)
     .notNull(),
-  application_id: integer('application_id').references(() => applications.id),
+  application_id: integer('application_id').references(() => applications.id, { onDelete: 'cascade' }),
   total_amount: integer('total_amount').notNull().default(0),
   status: text('status', { enum: ['PENDING', 'PAID', 'VOID'] })
     .notNull()

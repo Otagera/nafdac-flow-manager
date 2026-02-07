@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,22 +88,19 @@ function TeamManagement() {
                         </span>
                       )}
                     </TableCell>
+// ... (imports remain the same, ensure DialogFooter is imported if not already)
+
+// ... (TeamManagement component logic)
+
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isCurrentUser}
-                        onClick={async () => {
-                          if (confirm('Are you sure?')) {
+                      <DeleteUserDialog 
+                        user={u} 
+                        isCurrentUser={isCurrentUser}
+                        onConfirm={async () => {
                             await api.admin.users({ id: u.id }).delete();
                             fetchUsers();
-                          }
-                        }}
-                      >
-                        <Trash2
-                          className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : 'text-red-500'}`}
-                        />
-                      </Button>
+                        }} 
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -114,6 +112,44 @@ function TeamManagement() {
     </div>
   );
 }
+
+function DeleteUserDialog({ user, isCurrentUser, onConfirm }: { user: any, isCurrentUser: boolean, onConfirm: () => Promise<void> }) {
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleDelete = async () => {
+        setLoading(true);
+        await onConfirm();
+        setLoading(false);
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={isCurrentUser}>
+                    <Trash2 className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : 'text-red-500'}`} />
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete User</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete <strong>{user.username}</strong>? This action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+                        {loading ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ... (InviteUserDialog remains the same)
 
 function InviteUserDialog({ onInvite }: { onInvite: () => void }) {
   const [username, setUsername] = useState('');

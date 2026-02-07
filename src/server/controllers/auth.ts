@@ -61,7 +61,11 @@ export const authController = new Elysia({ prefix: '/auth' })
       const { invite_code, username, password } = body;
 
       // Find user by invite code
-      const [user] = await db.select().from(users).where(eq(users.invite_code, invite_code)).limit(1);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.invite_code, invite_code))
+        .limit(1);
 
       if (!user) {
         set.status = 400;
