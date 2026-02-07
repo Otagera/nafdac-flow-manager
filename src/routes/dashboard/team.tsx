@@ -88,10 +88,6 @@ function TeamManagement() {
                         </span>
                       )}
                     </TableCell>
-// ... (imports remain the same, ensure DialogFooter is imported if not already)
-
-// ... (TeamManagement component logic)
-
                     <TableCell className="text-right">
                       <DeleteUserDialog 
                         user={u} 
