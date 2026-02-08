@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
-import { Printer, Plus, Trash2, ReceiptText } from 'lucide-react';
+import { Printer, Plus, Trash2, ReceiptText, Eye, UploadCloud, RefreshCw, FileText } from 'lucide-react';
 
 interface Client {
   id: number;
@@ -51,12 +51,19 @@ interface Invoice {
   items?: InvoiceItem[];
 }
 
+interface Document {
+    id: number;
+    file_path: string;
+    file_type?: string; 
+    created_at?: string;
+}
+
 interface Application {
   id: number;
   product_name: string;
   status: string;
   client?: Client;
-  documents?: { id: number; file_path: string }[];
+  documents?: Document[];
   invoices?: Invoice[];
 }
 
@@ -183,6 +190,7 @@ export function ApplicationList({ role }: { role: string }) {
                           invoice={app.invoices[0]}
                           client={app.client}
                           product={app.product_name}
+                          onSuccess={fetchApps}
                         />
                       )}
 
@@ -193,26 +201,12 @@ export function ApplicationList({ role }: { role: string }) {
                       )}
                       {role === 'VETTING' && app.status === 'VETTING_PROGRESS' && (
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              if (app.documents && app.documents.length > 0) {
-                                window.open(
-                                  `/api/uploads/${app.documents[0].file_path.split('/').pop()}`,
-                                  '_blank',
-                                );
-                              } else {
-                                toast({
-                                  variant: 'destructive',
-                                  title: 'No Documents',
-                                  description: 'This application has no uploaded documents.',
-                                });
-                              }
-                            }}
-                          >
-                            View Docs
-                          </Button>
+                          <ManageDocumentsDialog
+                            application={app}
+                            role={role}
+                            onSuccess={fetchApps}
+                            readonly
+                          />
                           <Button
                             size="sm"
                             onClick={() => updateStatus(app.id, 'NAFDAC_SUBMITTED')}
@@ -222,14 +216,20 @@ export function ApplicationList({ role }: { role: string }) {
                         </>
                       )}
                       {role === 'DOCUMENTATION' && (
-                        <UploadDocumentDialog
-                          applicationId={app.id}
+                        <ManageDocumentsDialog
+                          application={app}
                           role={role}
                           onSuccess={fetchApps}
                         />
                       )}
                       {role === 'DIRECTOR' && (
                         <div className="flex gap-2">
+                          <ManageDocumentsDialog
+                            application={app}
+                            role={role}
+                            onSuccess={fetchApps}
+                            readonly
+                          />
                           {app.status === 'NAFDAC_SUBMITTED' && (
                             <Button
                               size="sm"
@@ -482,10 +482,14 @@ function InvoiceViewDialog({
   invoice,
   client,
   product,
-}: { invoice: Invoice; client?: Client; product: string }) {
+  onSuccess // Added onSuccess prop to refresh list after edit
+}: { invoice: Invoice; client?: Client; product: string; onSuccess?: () => void }) {
   const handlePrint = () => {
     window.print();
   };
+
+  // Only allow editing if PENDING
+  const canEdit = invoice.status === 'PENDING';
 
   return (
     <Dialog>
@@ -500,7 +504,10 @@ function InvoiceViewDialog({
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
+          <div className="flex items-center gap-2">
+             <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
+             {canEdit && <EditInvoiceDialog invoice={invoice} onSuccess={onSuccess} />}
+          </div>
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
@@ -596,68 +603,289 @@ function InvoiceViewDialog({
   );
 }
 
-function UploadDocumentDialog({
-  applicationId,
+function EditInvoiceDialog({ invoice, onSuccess }: { invoice: Invoice; onSuccess?: () => void }) {
+    const [open, setOpen] = useState(false);
+    const [items, setItems] = useState<InvoiceItem[]>(invoice.items || []);
+    const { toast } = useToast();
+
+    // Standard Fees reused
+    const standardFees = [
+        { label: 'Official Registration Fee', price: 50000 },
+        { label: 'Documentation Fee', price: 20000 },
+        { label: 'SOP Writing', price: 30000 },
+        { label: 'Formulation Fee', price: 25000 },
+        { label: 'PR Fees', price: 10000 },
+        { label: 'Consultation & Retainership', price: 100000 },
+    ];
+
+    const addItem = (description = '', price = 0) => {
+        setItems([
+          ...items,
+          { id: crypto.randomUUID(), description, quantity: 1, unit_price: price },
+        ]);
+    };
+    
+    const removeItem = (idx: number) => {
+        const newItems = [...items];
+        newItems.splice(idx, 1);
+        setItems(newItems);
+    };
+    
+    const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+        const newItems = [...items];
+        const item = { ...newItems[index] };
+        (item as any)[field] = value;
+        newItems[index] = item;
+        setItems(newItems);
+    };
+
+    const handleSave = async () => {
+        try {
+            const { error } = await api.invoices({ id: invoice.id.toString() }).put({
+                items: items.map(i => ({
+                    description: i.description,
+                    quantity: i.quantity,
+                    unit_price: i.unit_price
+                }))
+            });
+
+            if (error) {
+                toast({ title: 'Error', description: 'Failed to update invoice', variant: 'destructive' });
+            } else {
+                toast({ title: 'Success', description: 'Invoice updated' });
+                setOpen(false);
+                if (onSuccess) onSuccess();
+            }
+        } catch (e) {
+            toast({ title: 'Error', description: 'Failed to update invoice', variant: 'destructive' });
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                    Edit
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Edit Invoice Items</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="flex justify-between items-center">
+                        <Label className="text-base font-bold">Items</Label>
+                        <div className="flex gap-2">
+                            <Select
+                            onValueChange={(val) => {
+                                const fee = standardFees.find((f) => f.label === val);
+                                if (fee) addItem(fee.label, fee.price);
+                            }}
+                            >
+                            <SelectTrigger className="w-[200px] h-8 text-xs">
+                                <SelectValue placeholder="Add Standard Fee" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {standardFees.map((fee) => (
+                                <SelectItem key={fee.label} value={fee.label}>
+                                    {fee.label}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <Button type="button" variant="outline" size="sm" onClick={() => addItem()}>
+                            <Plus className="h-3 w-3 mr-1" /> Custom
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {items.map((item, index) => (
+                            <div key={item.id || index} className="flex gap-2 items-end bg-slate-50 p-2 rounded-md border">
+                                <div className="flex-1 space-y-1">
+                                    <Label className="text-[10px] uppercase">Description</Label>
+                                    <Input
+                                        value={item.description}
+                                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <div className="w-20 space-y-1">
+                                    <Label className="text-[10px] uppercase">Qty</Label>
+                                    <Input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value, 10))}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <div className="w-32 space-y-1">
+                                    <Label className="text-[10px] uppercase">Unit Price (₦)</Label>
+                                    <Input
+                                        type="number"
+                                        value={item.unit_price}
+                                        onChange={(e) => updateItem(index, 'unit_price', parseInt(e.target.value, 10))}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-500"
+                                    onClick={() => removeItem(index)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="text-right font-bold text-lg pr-2 border-t pt-2">
+                        Total: ₦{items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0).toLocaleString()}
+                    </div>
+
+                    <Button className="w-full" onClick={handleSave}>Save Changes</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ManageDocumentsDialog({
+  application,
   role,
   onSuccess,
+  readonly = false,
 }: {
-  applicationId: number;
+  application: Application;
   role: string;
   onSuccess: () => void;
+  readonly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [type, setType] = useState('CAC');
   const { toast } = useToast();
+  const [uploading, setUploading] = useState<string | null>(null);
 
-  const handleUpload = async () => {
-    if (!file) return;
+  const docTypes = ['CAC', 'LABEL', 'SOP'];
+  const isLocked = readonly || application.status === 'APPROVED' || application.status === 'NAFDAC_SUBMITTED';
 
-    await api.upload.index.post(
-      {
-        file: file,
-        application_id: applicationId.toString(),
-        file_type: type,
-      },
-      {
-        headers: { 'x-user-role': role },
-      },
-    );
-    setOpen(false);
-    toast({
-      title: 'Document Uploaded',
-      description: 'Application moved to Finance stage.',
-    });
-    onSuccess();
+  const handleUpload = async (type: string, file: File) => {
+    setUploading(type);
+    try {
+        await api.upload.index.post(
+        {
+            file: file,
+            application_id: application.id.toString(),
+            file_type: type,
+        },
+        {
+            headers: { 'x-user-role': role },
+        }
+        );
+        toast({ title: 'Success', description: `${type} document uploaded.` });
+        onSuccess();
+    } catch (e) {
+        toast({ title: 'Error', description: 'Upload failed', variant: 'destructive' });
+    } finally {
+        setUploading(null);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="secondary" size="sm">
-          Upload
+            <FileText className="h-4 w-4 mr-2" /> Docs
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload Document</DialogTitle>
+          <DialogTitle>{readonly ? 'View Documents' : 'Manage Documents'}</DialogTitle>
+          <DialogDescription>
+            {application.product_name}
+            {isLocked && !readonly && <span className="block text-red-500 font-bold mt-1">LOCKED: Application is {application.status}</span>}
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <select
-              className="w-full border p-2 rounded"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              <option value="CAC">CAC</option>
-              <option value="LABEL">Label</option>
-              <option value="SOP">SOP</option>
-            </select>
-          </div>
-          <Button onClick={handleUpload}>Upload</Button>
+
+        <div className="space-y-4 py-2">
+            {docTypes.map(type => {
+                // Find existing document of this type
+                const existingDoc = application.documents?.find((d) => d.file_type === type);
+
+                return (
+                    <div key={type} className="flex flex-col gap-2 border p-3 rounded-md bg-slate-50">
+                        <div className="flex justify-between items-center">
+                            <span className="font-bold text-sm text-slate-700">{type} Document</span>
+                            {existingDoc ? (
+                                <span className="text-xs text-green-600 font-medium bg-green-100 px-2 py-0.5 rounded flex items-center gap-1">
+                                    ✓ Uploaded
+                                </span>
+                            ) : (
+                                <span className="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded">
+                                    Missing
+                                </span>
+                            )}
+                        </div>
+
+                        {existingDoc && (
+                             <div className="flex items-center gap-2 text-xs text-slate-600 bg-white p-2 rounded border">
+                                <FileText className="h-3 w-3" />
+                                <span className="truncate flex-1" title={existingDoc.file_path.split('/').pop()}>
+                                    {existingDoc.file_path.split('/').pop()}
+                                </span>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-slate-100" onClick={() => {
+                                    const url = existingDoc.file_path.startsWith('http') 
+                                        ? existingDoc.file_path 
+                                        : `/api/uploads/${existingDoc.file_path.split('/').pop()}`;
+                                    window.open(url, '_blank');
+                                }}>
+                                    <Eye className="h-3 w-3 text-blue-600" />
+                                </Button>
+                            </div>
+                        )}
+
+                        {!readonly && (
+                            <div className="mt-1">
+                                <Input 
+                                    type="file" 
+                                    id={`file-${type}`} 
+                                    className="hidden" 
+                                    disabled={isLocked}
+                                    onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) handleUpload(type, f);
+                                    }}
+                                />
+                                <Label 
+                                    htmlFor={`file-${type}`} 
+                                    className={`
+                                        flex items-center justify-center gap-2 w-full py-2 rounded-md text-xs font-bold cursor-pointer transition-all border
+                                        ${isLocked 
+                                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                            : existingDoc
+                                                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+                                                : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-sm'}
+                                    `}
+                                    onClick={(e) => { if (isLocked) e.preventDefault(); }}
+                                >
+                                    {uploading === type ? (
+                                        <RefreshCw className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        existingDoc ? <RefreshCw className="h-3 w-3" /> : <UploadCloud className="h-3 w-3" />
+                                    )}
+                                    {uploading === type ? 'Uploading...' : (existingDoc ? 'Replace Document' : 'Upload Document')}
+                                </Label>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
+
+        <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -5,6 +5,7 @@ import { clientsController } from './controllers/clients';
 import { authController } from './controllers/auth';
 import { adminController } from './controllers/admin';
 import { reportsController } from './controllers/reports';
+import { invoicesController } from './controllers/invoices';
 import { staticPlugin } from '@elysiajs/static';
 
 export const app = new Elysia()
@@ -20,6 +21,7 @@ export const app = new Elysia()
       .use(uploadController)
       .use(clientsController)
       .use(reportsController)
+      .use(invoicesController)
   );
 
 export type App = typeof app;

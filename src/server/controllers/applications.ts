@@ -25,7 +25,7 @@ export const applicationsController = new Elysia({ prefix: '/applications' })
       }
 
       return db.query.applications.findMany({
-        with: { client: true, invoices: { with: { items: true } } },
+        with: { client: true, invoices: { with: { items: true } }, documents: true },
       });
     },
     {
